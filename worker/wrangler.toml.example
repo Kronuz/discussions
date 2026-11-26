@@ -19,3 +19,8 @@ migrations_dir = "migrations"
 [vars]
 PUBLIC_BASE_URL = "https://comments.example.com"
 REQUEST_MAX_BYTES = "1048576"
+
+# Serve the Worker from a hostname on a zone in the same Cloudflare account. Cloudflare
+# creates the DNS record and certificate. PUBLIC_BASE_URL must name the same host.
+# routes = [{ pattern = "comments.example.com", custom_domain = true }]
+# workers_dev = false

@@ -386,6 +386,39 @@ must retain `SESSION_SECRET`, `CONFIG_MASTER_KEY`, and `SERVICE_ADMIN_TOKEN`. Lo
 replacing `CONFIG_MASTER_KEY` without re-encrypting every tenant makes their stored
 configuration unreadable.
 
+## Move the Worker to another domain
+
+A move changes only addresses. Comments are keyed by tenant and term, not by the site's or
+Worker's URL, so every thread survives. Readers sign in once more, because the session
+cookie belongs to the old host.
+
+1. Add the new zone to the Worker's Cloudflare account, for example by pointing the
+   domain's nameservers at Cloudflare.
+2. Attach the hostname. Set `routes` in `wrangler.toml` as in `wrangler.toml.example` and
+   deploy, or add a Custom Domain under the Worker's Domains & Routes. The old address
+   keeps working.
+3. Confirm the new host serves every tenant:
+
+   ```bash
+   curl --fail https://comments.example.com/health
+   curl --fail https://comments.example.com/my-blog/config
+   ```
+
+4. Set `PUBLIC_BASE_URL` to the new origin and deploy. From here, OAuth sends readers to
+   the new callback.
+5. Change each OAuth client's callback to `<PUBLIC_BASE_URL>/<tenant>/auth/callback`. A
+   GitHub OAuth App holds one callback, so sign-in fails between steps 4 and 5; reading
+   comments does not.
+6. Point every site's `backend` at `<PUBLIC_BASE_URL>/<tenant>` and redeploy the sites.
+   Tenant `origins` name the sites, not the Worker, so they stay as they are.
+7. Once every site is live on the new address, set `workers_dev = false` and deploy.
+
+To change only `PUBLIC_BASE_URL` without a code deploy, edit the variable in the
+dashboard (Worker → Settings → Variables and Secrets). The dashboard keeps the secrets. A
+settings API call must list every binding and pass each secret as
+`{"type": "inherit", "name": "..."}`, or the new version drops it; losing
+`CONFIG_MASTER_KEY` makes every tenant unreadable.
+
 ## Repair policy
 
 For a suspected data problem:
@@ -408,6 +441,7 @@ this schema.
 | symptom | first checks |
 | --- | --- |
 | `/health` fails | deployment list, `wrangler tail`, Worker route and account |
+| certificate error on one network only, `*.workers.dev` | the network's DNS blocks `workers.dev`; serve from a custom domain |
 | `/:tenant/config` returns `404` | tenant spelling, `active`, access key, encrypted config lengths |
 | tenant config returns `500` after a secret change | `CONFIG_MASTER_KEY` continuity, Worker logs |
 | OAuth provider rejects callback | exact OAuth App callback, tenant `oauth.callbackUrl`, Worker base URL |
@@ -425,5 +459,6 @@ this schema.
 - [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
 - [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)
 - [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
+- [Worker custom domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
 - [Worker versions and deployments](https://developers.cloudflare.com/workers/versions-and-deployments/)
 - [Worker rollbacks](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)

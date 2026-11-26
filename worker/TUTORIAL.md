@@ -34,6 +34,10 @@ Edit `wrangler.toml`:
 
 - Set `name` and `database_name` if you do not want the defaults.
 - Set `PUBLIC_BASE_URL` to the final Worker origin, without a tenant path.
+- To serve from your own domain, uncomment `routes` and `workers_dev`. Some corporate
+  networks block all of `*.workers.dev`, so a custom domain reaches more readers.
+  [`OPERATIONS.md`](OPERATIONS.md#move-the-worker-to-another-domain) moves an existing
+  deployment.
 - Leave `database_id = "local-dev-placeholder"` for a new D1 database. `deploy.sh` creates
   the database and writes its ID into the local file.
 
