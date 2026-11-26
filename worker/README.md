@@ -27,9 +27,12 @@ static site capability, not per-reader authorization.
 Management has two operations:
 
 ```text
-GET /:tenant/config   public widget configuration
+GET /:tenant/config   public widget configuration; with the service token, the complete one
 PUT /:tenant/config   authenticated upsert of the complete private configuration
 ```
+
+An authenticated `GET` returns exactly the document `PUT` accepts, inactive tenants
+included, so a lost tenant file can be recovered, edited, and sent back.
 
 There is no delete operation. Set `active` to `false` in a full `PUT` to take a tenant
 offline without removing its discussions, comments, or reactions. A later full `PUT` with
@@ -55,7 +58,7 @@ Only deployment-wide infrastructure stays outside tenant configuration:
 | `REQUEST_MAX_BYTES` | hard service request-size ceiling |
 | `SESSION_SECRET` | signs tenant-bound sessions and OAuth state |
 | `CONFIG_MASTER_KEY` | encrypts complete tenant documents in D1 |
-| `SERVICE_ADMIN_TOKEN` | authorizes `PUT /:tenant/config` |
+| `SERVICE_ADMIN_TOKEN` | authorizes `PUT /:tenant/config` and the complete `GET` |
 
 The last three are Worker secrets. Losing `CONFIG_MASTER_KEY` makes stored tenant
 configuration unrecoverable. Back it up securely.

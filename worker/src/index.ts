@@ -103,11 +103,16 @@ app.use("*", async (c, next) => {
 
 app.get("/health", (c) => c.json({ ok: true }));
 
-// PUT is the complete management API: authenticated upsert of one full configuration.
-app.put("/:tenant/config", async (c) => {
+function requireServiceAdmin(c: Ctx): void {
   const cfg = c.get("cfg");
   const token = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") || "";
   if (!cfg.serviceAdminToken || !safeEq(token, cfg.serviceAdminToken)) throw new HttpError(401, "service administrator token required");
+}
+
+// PUT is the complete management API: authenticated upsert of one full configuration.
+app.put("/:tenant/config", async (c) => {
+  requireServiceAdmin(c);
+  const cfg = c.get("cfg");
   const tenantId = c.req.param("tenant");
   validateTenantId(tenantId);
   const config = validateTenantConfig(await c.req.json(), c.env);
@@ -119,6 +124,18 @@ app.put("/:tenant/config", async (c) => {
     oauthCallbackUrl: `${cfg.publicBaseUrl}/${tenantId}/auth/callback`,
     config: publicTenantConfig(config),
   }, created ? 201 : 200);
+});
+
+// With the service token, GET returns the complete document PUT accepts, inactive tenants
+// included. Without one, it falls through to the public projection below.
+app.get("/:tenant/config", async (c, next) => {
+  if (!c.req.header("authorization")) return next();
+  requireServiceAdmin(c);
+  const tenantId = c.req.param("tenant");
+  validateTenantId(tenantId);
+  const tenant = await loadTenant(c.get("db"), c.get("cfg"), tenantId, true);
+  c.header("Cache-Control", "private, no-store");
+  return c.json(tenant.config);
 });
 
 // Every remaining tenant route loads the encrypted configuration selected by the path.

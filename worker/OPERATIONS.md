@@ -356,6 +356,15 @@ curl --fail-with-body -X PUT \
   --data-binary @tenant-config.my-blog.json
 ```
 
+Recover the complete document, for example when the local file is lost:
+
+```bash
+curl --fail https://comments.example.com/my-blog/config \
+  -H "Authorization: Bearer $SERVICE_ADMIN_TOKEN" > tenant-config.my-blog.json
+```
+
+It holds the OAuth client secret and tokens; keep it gitignored.
+
 There is no partial update and no tenant deletion. To disable a tenant, change its full
 document to `"active": false` and send the same `PUT`. Do not update only the `active`
 database column because the encrypted document is also authoritative.
@@ -380,6 +389,10 @@ uses it:
 ```bash
 npx wrangler secret delete OBSOLETE_SECRET
 ```
+
+A lost `SERVICE_ADMIN_TOKEN` is replaced the same way; the tenants stay readable. A lost
+`CONFIG_MASTER_KEY` cannot be recovered, but the deployed Worker still holds it, so recover
+every tenant document with the admin `GET` before any change to that key.
 
 Cloudflare creates a new Worker version when a secret is changed or deleted. The service
 must retain `SESSION_SECRET`, `CONFIG_MASTER_KEY`, and `SERVICE_ADMIN_TOKEN`. Losing or
